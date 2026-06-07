@@ -9,6 +9,7 @@ from util import correct_preds
 
 
 def eval(model, split, seq_length, n_cpu, disp):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     dataset = GolfDB(data_file='data/val_split_{}.pkl'.format(split),
                      vid_dir='data/videos_160/',
                      seq_length=seq_length,
@@ -33,7 +34,8 @@ def eval(model, split, seq_length, n_cpu, disp):
                 image_batch = images[:, batch * seq_length:, :, :, :]
             else:
                 image_batch = images[:, batch * seq_length:(batch + 1) * seq_length, :, :, :]
-            logits = model(image_batch.cuda())
+            image_batch = image_batch.to(device)
+            logits = model(image_batch)
             if batch == 0:
                 probs = F.softmax(logits.data, dim=1).cpu().numpy()
             else:
@@ -60,9 +62,10 @@ if __name__ == '__main__':
                           bidirectional=True,
                           dropout=False)
 
-    save_dict = torch.load('models/swingnet_1800.pth.tar')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    save_dict = torch.load('models/swingnet_1800.pth.tar', map_location=device)
     model.load_state_dict(save_dict['model_state_dict'])
-    model.cuda()
+    model.to(device)
     model.eval()
     PCE = eval(model, split, seq_length, n_cpu, True)
     print('Average PCE: {}'.format(PCE))

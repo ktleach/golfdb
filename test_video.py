@@ -7,6 +7,7 @@ from eval import ToTensor, Normalize
 from model import EventDetector
 import numpy as np
 import torch.nn.functional as F
+import sys
 
 event_names = {
     0: 'Address',
@@ -79,10 +80,12 @@ if __name__ == '__main__':
                           bidirectional=True,
                           dropout=False)
 
+    weights_path = 'models/swingnet_1800.pth.tar'
     try:
-        save_dict = torch.load('models/swingnet_1800.pth.tar')
-    except:
+        save_dict = torch.load(weights_path, map_location='cpu')
+    except FileNotFoundError:
         print("Model weights not found. Download model weights and place in 'models' folder. See README for instructions")
+        sys.exit(1)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Using device:', device)
@@ -101,7 +104,8 @@ if __name__ == '__main__':
                 image_batch = images[:, batch * seq_length:, :, :, :]
             else:
                 image_batch = images[:, batch * seq_length:(batch + 1) * seq_length, :, :, :]
-            logits = model(image_batch.cuda())
+            image_batch = image_batch.to(device)
+            logits = model(image_batch)
             if batch == 0:
                 probs = F.softmax(logits.data, dim=1).cpu().numpy()
             else:
